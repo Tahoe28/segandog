@@ -69,8 +69,8 @@ const main = async () => {
         choice == questionTools[12] && require("./tools/fltauto.js");
         choice == questionTools[13] && require("./tools/unfollowall.js");
         choice == questionTools[14] && require("./tools/unfollnotfollback.js");
-        choice == questionTools[14] && require("./tools/flmauto.js");
-        choice == questionTools[15] && process.exit();
+        choice == questionTools[15] && require("./tools/flmauto.js");
+        choice == questionTools[16] && process.exit();
     } catch (err) {
         print(err, "err");
     }
