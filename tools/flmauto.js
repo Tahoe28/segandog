@@ -17,225 +17,88 @@ const { chalk, inquirer, _, fs, instagram, print, delay } = require("./index.js"
     );
     const questions = [
         {
-	type:'input',
-	name:'username',
-	message:'[>] Insert Username:',
-	validate: function(value){
-		if(!value) return 'Can\'t Empty';
-		return true;
-	}
-},
-{
-	type:'password',
-	name:'password',
-	message:'[>] Insert Password:',
-	mask:'*',
-	validate: function(value){
-		if(!value) return 'Can\'t Empty';
-		return true;
-	}
-},
-{
-	type:'input',
-	name:'target',
-	message:'[>] Insert Link Media:',
-	validate: function(value){
-		if(!value) return 'Can\'t Empty';
-		return true;
-	}
-},
-{
-	type:'input',
-	name:'text',
-	message:'[>] Insert Text Comment (Use [|] if more than 1):',
-	validate: function(value){
-		if(!value) return 'Can\'t Empty';
-		return true;
-	}
-},
-{
-  type:'input',
-  name:'mysyntx',
-  message:'[>] Input Total of Target You Want (ITTYW):',
-  validate: function(value){
-    value = value.match(/[0-9]/);
-    if (value) return true;
-    return 'Use Number Only!';
-  }
-},
-{
-	type:'input',
-	name:'sleep',
-	message:'[>] Insert Sleep (MiliSeconds):',
-	validate: function(value){
-		value = value.match(/[0-9]/);
-		if (value) return true;
-		return 'Delay is number';
-	}
-}
-]
+            type: "input",
+            name: "username",
+            message: "Input Username:",
+            validate: (val) => val.length != 0 || "Please input username!",
+        },
+        {
+            type: "password",
+            name: "password",
+            mask: "*",
+            message: "Input password:",
+            validate: (val) => val.length != 0 || "Please input password!",
+        },
+        {
+            type: "input",
+            name: "target",
+            message: "Input Link Media:",
+            validate: (val) => val.length != 0 || "Please input target's username!",
+        },
+        {
+            type: "input",
+            name: "inputMessage",
+            message: "Input text's message (more? '|') :",
+            validate: (val) => val.length != 0 || "Please input text's Message!",
+        },
+        {
+            type: "input",
+            name: "perExec",
+            message: "Input limit per-execution:",
+            validate: (val) => /[0-9]/.test(val) || "Only input numbers",
+        },
+        {
+            type: "input",
+            name: "delayTime",
+            message: "Input sleep time (in milliseconds):",
+            validate: (val) => /[0-9]/.test(val) || "Only input numbers",
+        },
+    ];
 
-const Login = async function(User){
-
-	const Device = new Client.Device(User.username);
-	const Storage = new Client.CookieMemoryStorage();
-	const session = new Client.Session(Device, Storage);
-
-	try {
-		await Client.Session.create(Device, Storage, User.username, User.password)
-		const account = await session.getAccount();
-		return Promise.resolve({session,account});
-	} catch (err) {
-		return Promise.reject(err);
-	}
-
-}
-
-const Target = async function(link){
-	const url = link+'?__a=1'
-	const option = {
-		url: url,
-		method: 'GET'
-	}
-	try{
-    const account = await rp(option);
-    const data = S(account).between('<script type="text/javascript">window._sharedData = ', ';</script>').s
-    const json = JSON.parse(data);		
-	return Promise.resolve(json.entry_data.PostPage[0].graphql.shortcode_media.id);
-	} catch (err){
-		return Promise.reject(err);
-	}
-
-}
-
-async function ngefollow(session,accountId){
-	try {
-		await Client.Relationship.create(session, accountId);
-		return true
-	} catch (e) {
-		return false
-	}
-}
-
-async function ngeComment(session, id, text){
-	try {
-		await Client.Comment.create(session, id, text);
-		return true;
-	} catch(e){
-		return false;
-	}
-}
-
-async function ngeLike(session, id){
-	try{
-		await Client.Like.create(session, id)
-		return true;
-	} catch(e) {
-		return false;
-	}
-}
-
-const CommentAndLike = async function(session, accountId, text){
-	var result;
-
-	const feed = new Client.Feed.UserMedia(session, accountId);
-
-	try {
-		result = await feed.get();
-	} catch (err) {
-		return chalk`{bold.red ${err}}`;
-	}
-
-	if (result.length > 0) {
-		if (result[0].params.hasLiked) {
-        return chalk`{bold.blue Already Follow,Liked & Comment}`;
-        }
-		const task = [
-		ngefollow(session, accountId),
-		ngeComment(session, result[0].params.id, text),
-		ngeLike(session, result[0].params.id)
-		]
-		const [Follow,Comment,Like] = await Promise.all(task);
-		const printFollow = Follow ? chalk`{green Follow}` : chalk`{red Follow}`;
-		const printComment = Comment ? chalk`{green Comment}` : chalk`{red Comment}`;
-		const printLike = Like ? chalk`{green Like}` : chalk`{red Like}`;
-		return chalk`{bold.green ${printFollow},${printComment},${printLike} [${text}]}`;
-	}
-	return chalk`{bold.cyan Timeline Kosong (SKIPPED)}`
-};
-
-const Followers = async function(session, id){
-	const feed = new Client.Feed.AccountFollowers(session, id);
-	try{
-		const Pollowers = [];
-		var cursor;
-		do {
-			if (cursor) feed.setCursor(cursor);
-			const getPollowers = await feed.get();
-			await Promise.all(getPollowers.map(async(akun) => {
-				Pollowers.push(akun.id);
-			}))
-			cursor = await feed.getCursor();
-		} while(feed.isMoreAvailable());
-		return Promise.resolve(Pollowers);
-	} catch(err){
-		return Promise.reject(err);
-	}
-}
-
-const Excute = async function(User, TargetUsername, Text, Sleep, mysyntx){
-	try {
-		console.log(chalk`{yellow \n [?] Try to Login . . .}`)
-		const doLogin = await Login(User);
-		console.log(chalk`{green  [!] Login Succsess, }{yellow [?] Try To Get Link & Media ID Target . . .}`)
-		const getTarget = await Target(TargetUsername);
-		console.log(chalk`{green  [!] ${TargetUsername} [${getTarget}]}`);
-		const getFollowers = await Followers(doLogin.session, doLogin.account.id);
-		console.log(chalk`{cyan  [?] Try to Follow, Comment, and Like Followers Target . . . \n}`)
-		var TargetResult = await Client.Media.likers(doLogin.session, getTarget);
-		TargetResult = _.chunk(TargetResult, mysyntx);
-		for (var i = 0; i < TargetResult.length; i++) {
-			var timeNow = new Date();
-			timeNow = `${timeNow.getHours()}:${timeNow.getMinutes()}:${timeNow.getSeconds()}`
-			await Promise.all(TargetResult[i].map(async(akun) => {
-				if (!getFollowers.includes(akun.id) && akun.params.isPrivate === false) {
-					var ranText = Text[Math.floor(Math.random() * Text.length)];
-					const ngeDo = await CommentAndLike(doLogin.session, akun.id, ranText)
-					console.log(chalk`[{magenta ${timeNow}}] {bold.green [>]} @${akun.params.username} => ${ngeDo}`)
-				} else {
-					console.log(chalk`[{magenta ${timeNow}}] {bold.yellow [SKIPPED]}${akun.params.username} => PRIVATE OR ALREADY FOLLOWED`)
-				}
-			}));
-			console.log(chalk`{yellow \n [#][>] Delay For ${Sleep} MiliSeconds [<][#] \n}`);
-			await delay(Sleep);
-		}
-	} catch (err) {
-		console.log(err);
-	}
-}
-
-console.log(chalk`
-  {bold.cyan
-  —————————————————— [INFORMATION] ————————————————————
-
-  [?] {bold.green FLMauto | Using Media/Link Target}
-
-  ——————————————————  [THANKS TO]  ————————————————————
-  [✓] CODE BY CYBER SCREAMER CCOCOT (ccocot@bc0de.net)
-  [✓] FIXING & TESTING BY SYNTAX (@officialputu_id)
-  [✓] CCOCOT.CO | BC0DE.NET | NAONLAH.NET | WingkoColi
-  [✓] SGB TEAM REBORN | Zerobyte.id | ccocot@bc0de.net 
-  —————————————————————————————————————————————————————
-  What's new?
-  1. Input Target/delay Manual (ITTYW)
-  —————————————————————————————————————————————————————}
-      `);
-//ikiganteng
-inquirer.prompt(User)
-.then(answers => {
-	var text = answers.text.split('|');
-	Excute({
-		username:answers.username,
-		password:answers.password
-	},answers.target,text,answers.sleep,answers.mysyntx);
-})
+    try {
+        const { username, password, target, perExec, delayTime, inputMessage } = await inquirer.prompt(questions);
+        const ig = new instagram(username, password);
+        print("Try to Login . . .", "wait", true);
+        const login = await ig.login();
+        print(`Logged in as @${login.username} (User ID: ${login.pk})`, "ok");
+        print(`Collecting information of @${target} . . .`, "wait");
+        const id = await ig.getIdByUsername(target),
+            info = await ig.userInfo(id);
+        if (!info.is_private) {
+            print(`@${target} (User ID: ${id}) => Followers: ${info.follower_count}, Following: ${info.following_count}`, "ok");
+            print("Collecting followers . . .", "wait");
+            const targetFollowers = await ig.followersFeed(id);
+            print(`Doing task with ratio ${perExec} target / ${delayTime} milliseconds \n`, "wait");
+            do {
+                let items = await targetFollowers.items();
+                items = _.chunk(items, perExec);
+                for (let i = 0; i < items.length; i++) {
+                    await Promise.all(
+                        items[i].map(async (follower) => {
+                            const status = await ig.friendshipStatus(follower.pk);
+                            if (!follower.is_private && !status.following && !status.followed_by) {
+                                const media = await ig.userFeed(follower.pk),
+                                    lastMedia = await media.items();
+                                const text = inputMessage.split("|");
+                                const msg = text[Math.floor(Math.random() * text.length)];
+                                if (lastMedia.length != 0 && lastMedia[0].pk) {
+                                    const task = [ig.follow(follower.pk), ig.like(lastMedia[0].pk), ig.comment(lastMedia[0].pk, msg)];
+                                    let [follow, like, comment] = await Promise.all(task);
+                                    follow = follow ? chalk.bold.green(`Follow`) : chalk.bold.red("Follow");
+                                    like = like ? chalk.bold.green("Like") : chalk.bold.red("Like");
+                                    comment = comment ? chalk.bold.green("Comment") : chalk.bold.red("Comment");
+                                    print(`▲ @${follower.username} ⇶ [${follow}, ${like}, ${comment}] ⇶ ${chalk.cyanBright(msg)}`);
+                                } else print(chalk`▼ @${follower.username} ⇶ {yellow No posts yet, Skip.}`);
+                            } else print(chalk`▼ @${follower.username} ⇶ {yellow Private or already followed/follows you, Skip.}`);
+                        })
+                    );
+                    if (i < items.length - 1) print(`Current Account: (${login.username}) » Delay: ${perExec}/${delayTime}ms \n`, "wait", true);
+                    await delay(delayTime);
+                }
+            } while (targetFollowers.moreAvailable);
+            print(`Status: All Task done!`, "ok", true);
+        } else print(`@${target} is private account`, "err");
+    } catch (err) {
+        print(err, "err");
+    }
+})();
