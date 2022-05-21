@@ -33,7 +33,7 @@ const { chalk, inquirer, _, fs, instagram, print, delay } = require("./index.js"
             type: "input",
             name: "target",
             message: "Input Link Media:",
-            validate: (val) => val.length != 0 || "Please input target's username!",
+            validate: (val) => val.length != 0 || "Please input target's link media!",
         },
         {
             type: "input",
