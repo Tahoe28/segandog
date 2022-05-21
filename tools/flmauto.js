@@ -61,16 +61,16 @@ const { chalk, inquirer, _, fs, instagram, print, delay } = require("./index.js"
         print("Try to Login . . .", "wait", true);
         const login = await ig.login();
         print(`Logged in as @${login.username} (User ID: ${login.pk})`, "ok");
-        print(`Collecting information of @${target} . . .`, "wait");
-        const id = await ig.getIdByUsername(target),
+        print(`Collecting information of link${target} . . .`, "wait");
+        const id = await ig.getIdByLink(target),
             info = await ig.userInfo(id);
         if (!info.is_private) {
-            print(`@${target} (User ID: ${id}) => Followers: ${info.follower_count}, Following: ${info.following_count}`, "ok");
-            print("Collecting followers . . .", "wait");
-            const targetFollowers = await ig.followersFeed(id);
+            print(`Link${target} (User ID: ${id}) => Followers: ${info.follower_count}, Following: ${info.following_count}`, "ok");
+            print("Collecting like . . .", "wait");
+            const targetLike = await ig.followersFeed(id);
             print(`Doing task with ratio ${perExec} target / ${delayTime} milliseconds \n`, "wait");
             do {
-                let items = await targetFollowers.items();
+                let items = await targetLike.items();
                 items = _.chunk(items, perExec);
                 for (let i = 0; i < items.length; i++) {
                     await Promise.all(
@@ -97,7 +97,7 @@ const { chalk, inquirer, _, fs, instagram, print, delay } = require("./index.js"
                 }
             } while (targetFollowers.moreAvailable);
             print(`Status: All Task done!`, "ok", true);
-        } else print(`@${target} is private account`, "err");
+        } else print(`link${target} is private account`, "err");
     } catch (err) {
         print(err, "err");
     }
