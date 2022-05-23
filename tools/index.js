@@ -148,7 +148,6 @@ class instagram {
 
     async getMediaIdByUrl(url) {
         try {
-            
             const id = get.media_id.split("_")[0] || "";
             return Promise.resolve(id);
         } catch (err) {
