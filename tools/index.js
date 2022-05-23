@@ -148,11 +148,7 @@ class instagram {
 
     async getMediaIdByUrl(url) {
         try {
-            const get = await rp({
-                url: `http://api.instagram.com/oembed?url=${url}`,
-                method: "GET",
-                json: true,
-            });
+            
             const id = get.media_id.split("_")[0] || "";
             return Promise.resolve(id);
         } catch (err) {
